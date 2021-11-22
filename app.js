@@ -1,15 +1,18 @@
 import express from 'express';
 import {userStorage} from './storage.js'
 import {rateLimiter} from './rateLimiter.js'
+import {requestAlgorithm} from './requestAlgorithm.js'
 
 const app = express();
 const port = 3000;
 
-const limit = 100;
-const period = 60*60;
+const limit = 10;
+const period = 10;
 
 const storage = new userStorage();
-const limiter = new rateLimiter(storage, limit, period);
+const strategy = new requestAlgorithm(storage, limit, period);
+const limiter = new rateLimiter(storage, strategy, limit, period);
+
 
 app.get('/', (req, res) => {
   if (!req.query.key ||

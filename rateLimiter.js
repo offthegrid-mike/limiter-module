@@ -1,4 +1,4 @@
-export function rateLimiter(storage, limit, period) {
+export function rateLimiter(storage, strategy, limit, period) {
     
     return {
         process: async (APIKey, res) => {
@@ -16,35 +16,34 @@ export function rateLimiter(storage, limit, period) {
             }
 
             const currentTS = Date.now(); 
-            var result = false;
-            if (await !storage.isExist(APIKey)) {
-                const user = new storage.userDetailFactory.userDetail(currentTS);
-                await storage.setValue(APIKey, user);
-                successBlock();
-                result = true;
+            let userIsExist = await storage.isExist(APIKey);
+            let requestSuccess = false
+
+            let userDetail = await storage.getValue(APIKey);
+            if (userIsExist) {
+                requestSuccess = strategy.canUserMakeRequest(userDetail, currentTS, period, limit);
+                if (requestSuccess) {
+                    let updatedUserDetail = strategy.updateUserRequest(userDetail, currentTS, period, limit)
+                    await storage.setValue(APIKey, updatedUserDetail)
+                }
             }
             else {
-                var user = await storage.getValue(APIKey);
-                const tsDiff = (currentTS - user.ts) / 1000; // TODO: decimal round up 
-                // reset attempt if difference is exceeded waiting period
-                if (tsDiff > period) {
-                    user = new storage.userDetailFactory.userDetail(currentTS);
-                    await storage.setValue(APIKey, user); // replace existed
-                    successBlock();
-                    result = true;
-                }
-                else if (user.attempt == limit) {
-                        failedBlock(Math.round((user.ts + period * 1000 - currentTS)/ 1000));
-                        result = false;
+                userDetail = strategy.createNewUserRequest(currentTS, period, limit);
+                if (userDetail !== null) {
+                    await storage.setValue(APIKey, userDetail);
+                    requestSuccess = true;
                 }
                 else {
-                    user.attempt++;
-                    await storage.setValue(APIKey, user);
-                    successBlock();
-                    result = true;
+                    requestSuccess = false;
                 }
             }
-            return result;
+
+            if (requestSuccess)
+                successBlock();
+            else
+                failedBlock(strategy.obtainRemainingTimeout(userDetail, currentTS, period, limit));
+
+            return requestSuccess;
         }
     }
 }

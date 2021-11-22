@@ -2,14 +2,6 @@ export function userStorage() {
     // map API key to object
     const userMap = new Map();
 
-    // factory for creating user detail object
-    var userDetailFactory = {
-        userDetail: function(ts) {
-            this.ts = ts;
-            this.attempt = 1; // on creation: first attempt
-        }
-    };
-
     function isExist(key) {
         return userMap.has(key);
     }
@@ -26,7 +18,6 @@ export function userStorage() {
         isExist, 
         getValue, 
         setValue,
-        userDetailFactory,
         userMap // For unit test only
     }
 }

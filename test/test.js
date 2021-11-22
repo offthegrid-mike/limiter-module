@@ -1,6 +1,7 @@
 import should from 'should';
 import {userStorage} from '../storage.js'
 import {rateLimiter} from '../rateLimiter.js'
+import {requestAlgorithm} from '../requestAlgorithm.js'
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -16,23 +17,14 @@ describe ("Unit Test - Storage", () => {
         done()
     })
 
-    it ('user detail factory constructor', done => {
-        const storage = new userStorage();
-        const currentTS = Date.now()
-        var userA = new storage.userDetailFactory.userDetail(currentTS)
-        var userB = new storage.userDetailFactory.userDetail(currentTS)
-
-        should.deepEqual(userA, userB) // use structural equality
-        done()
-    })
-
     it ('isExist function', done => {
         const storage = new userStorage();
-        var user = new storage.userDetailFactory.userDetail(Date.now())
+        const strategy = new requestAlgorithm();
+        var user = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-A", user)
-        user = new storage.userDetailFactory.userDetail(Date.now())
+        user = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-B", user)
-        user = new storage.userDetailFactory.userDetail(Date.now())
+        user = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-C", user)
         
         var actual = storage.isExist("key-A");
@@ -56,11 +48,12 @@ describe ("Unit Test - Storage", () => {
 
     it ('setValue function', done => {
         const storage = new userStorage();
-        var user = new storage.userDetailFactory.userDetail(Date.now())
+        const strategy = new requestAlgorithm();
+        var user = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-A", user)
-        user = new storage.userDetailFactory.userDetail(Date.now())
+        user = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-B", user)
-        user = new storage.userDetailFactory.userDetail(Date.now())
+        user = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-C", user)
         
         var actual = storage.userMap.size;
@@ -72,11 +65,12 @@ describe ("Unit Test - Storage", () => {
 
     it ('getValue function', done => {
         const storage = new userStorage();
-        var userA = new storage.userDetailFactory.userDetail(Date.now())
+        const strategy = new requestAlgorithm();
+        var userA = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-A", userA)
-        var userB = new storage.userDetailFactory.userDetail(Date.now())
+        var userB = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-B", userB)
-        var userC = new storage.userDetailFactory.userDetail(Date.now())
+        var userC = strategy.createNewUserRequest(Date.now(), 1, 1)
         storage.setValue("key-C", userC)
         
         var actual = storage.getValue("key-A");
@@ -104,7 +98,8 @@ describe ("Unit Test - Rate Limiter", () => {
     // unit test on rete limiter
     it('invalid API', async () => {
         const storage = new userStorage();
-        const limiter = new rateLimiter(storage, 1, 1);
+        const algorithm = new requestAlgorithm();
+        const limiter = new rateLimiter(storage, algorithm, 1, 1);
 
         let res = {
             respStatus: 0,
@@ -130,7 +125,8 @@ describe ("Unit Test - Rate Limiter", () => {
 
     it('valid API', async () => {
         const storage = new userStorage();
-        const limiter = new rateLimiter(storage, 1, 1);
+        const algorithm = new requestAlgorithm();
+        const limiter = new rateLimiter(storage, algorithm, 1, 1);
 
         let res = {
             respStatus: 0,
@@ -156,7 +152,8 @@ describe ("Unit Test - Rate Limiter", () => {
 
     it('valid API - storage data checking', async () => {
         const storage = new userStorage();
-        const limiter = new rateLimiter(storage, 1, 1);
+        const algorithm = new requestAlgorithm();
+        const limiter = new rateLimiter(storage, algorithm, 1, 1);
 
         let res = {
             send: function(msg) { 
@@ -187,7 +184,8 @@ describe ("Unit Test - Rate Limiter", () => {
 
     it('valid API - excessive API request', async () => {
         const storage = new userStorage();
-        const limiter = new rateLimiter(storage, 100, 1);
+        const algorithm = new requestAlgorithm();
+        const limiter = new rateLimiter(storage, algorithm, 100, 1);
 
         let res = {
             respStatus: 0,
@@ -239,7 +237,8 @@ describe ("Unit Test - Rate Limiter", () => {
 
     it('valid API - request after blockage', async () => {
         const storage = new userStorage();
-        const limiter = new rateLimiter(storage, 100, 1);
+        const algorithm = new requestAlgorithm();
+        const limiter = new rateLimiter(storage, algorithm, 100, 1);
 
         let res = {
             respStatus: 0,
@@ -297,5 +296,68 @@ describe ("Unit Test - Rate Limiter", () => {
         storageActual = storage.getValue("key-A").attempt;
         storageExpect = 1;
         should.equal(storageActual, storageExpect);
+    })
+})
+
+describe ("Unit Test - Request Algorithm", () => {
+    // unit test on request algorithm
+    it ('user detail constructor', done => {
+        const strategy = new requestAlgorithm();
+        const currentTS = Date.now()
+        var userA = strategy.createNewUserRequest(currentTS, 1, 1);
+        var userB = strategy.createNewUserRequest(currentTS, 1, 1);
+
+        should.deepEqual(userA, userB) // use structural equality
+        done()
+    })
+
+    it ('user make request function', done => {
+        const strategy = new requestAlgorithm();
+        const currentTS = Date.now()
+        var user = strategy.createNewUserRequest(currentTS, 1, 1);
+        const actual = strategy.canUserMakeRequest(user, currentTS, 1, 1);
+        const expect = false;
+
+        expect.should.equal(actual)
+        done()
+    })
+
+    it ('update user request', done => {
+        const strategy = new requestAlgorithm();
+        const currentTS = Date.now()
+        var user = strategy.createNewUserRequest(currentTS, 1, 1);
+        const newUser = strategy.updateUserRequest(user, currentTS, 1, 2);
+        const expect = 2;
+
+        expect.should.equal(newUser.attempt)
+        done()
+    })
+
+    it ('update user request with excessive', done => {
+        const strategy = new requestAlgorithm();
+        const currentTS = Date.now()
+        var user = strategy.createNewUserRequest(currentTS, 1, 1);
+        user.attempt = 10;
+        const newUser = strategy.updateUserRequest(user, currentTS, 1, 10);
+        const expect = 10;
+
+        expect.should.equal(newUser.attempt)
+        done()
+    })
+
+    it ('obtain remaining timeout', async() => {
+        const strategy = new requestAlgorithm();
+        let currentTS = Date.now()
+        var user = strategy.createNewUserRequest(currentTS, 1, 1);
+        user.attempt = 10;
+
+        // wait more than 1 seconds
+        await wait(1500);
+
+        currentTS = Date.now()
+        const actual = strategy.obtainRemainingTimeout(user, currentTS, 10, 10);
+        const expect = 10;
+
+        expect.should.greaterThanOrEqual(actual);
     })
 })
