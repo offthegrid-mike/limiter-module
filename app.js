@@ -5,7 +5,7 @@ import {rateLimiter} from './rateLimiter.js'
 const app = express();
 const port = 3000;
 
-const limit = 0;
+const limit = 100;
 const period = 60*60;
 
 const storage = new userStorage();
