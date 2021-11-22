@@ -47,9 +47,49 @@ Using web browser to request the 101st using same API key, will return
 Using other API key can still access successfully
 
 # Modified parameters
-Number of limit and restriction period can be modified `limit` and `period` parameters in `app.js`
+Number of limit, restriction period and decision algorithm can be modified `limit`, `period` and `strategy` parameters in `app.js`
 * limit: integer
 * period: integer (second)
+* strategy: Object
+
+For decision algorithm, need to implement the following four functions and design a user value for storage use
+```
+* user: user detail which is designed with respect to the strategy
+* currentTS: current request timestamp
+* period: time window to restrict request
+* limit: number of request that user can make
+```
+
+### canUserMakeRequest(user, currentTS, period, limit)
+```
+Usage: to determine user can make request this time
+Return: boolean
+```
+
+### updataeUserRequest(user, currentTS, period, limit)
+```
+Usage: to update user detail for this request
+Return: boolean
+```
+
+### createNewUserRequest(currentTS, period, limit)
+```
+Usage: to create first time request user detail
+Return: User detail object
+```
+
+### obtainRemainingTimeout(user, currentTS, period, limit)
+```
+Usage: to calculate user timeout until next allowed request in second
+Return: integer
+```
 
 # Unit testing
 Simply call `mocha` to help you run the unit test and you can enjoy your coffee
+
+# Futher progress and insight
+- The storage unit is currently volatile (aka in memory only, data can only retain in program life cycle), it would be better to adapt different storage module to support disk storage, like [keyDB](https://keydb.dev/), [redis](https://redis.io/) or relational databases(e.g.: MYSQL or PostgreSQL)
+
+- The current algorithm is using second as time unit to compare difference, since timestamp round up from millisecond will lost precision, revised to prevent rounding is better
+
+- Always feel energetic when design and build modules that can allow others to use and rely on!
