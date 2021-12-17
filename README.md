@@ -12,14 +12,14 @@ Clone this repo to your local machine using CLI or any git softwares
 git clone https://github.com/offthegrid-mike/limiter-module.git
 ```
 
-cd to repo foler and install required dependencies if needed
+cd to repo folder and install required dependencies if needed
 ```
 npm install
 ```
 
-Install necessary module for unit testing
+Run unit tests
 ```
-npm install mocha
+npm run test
 ```
 
 # Run application
